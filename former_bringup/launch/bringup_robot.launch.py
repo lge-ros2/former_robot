@@ -8,11 +8,21 @@ from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 from launch_ros.substitutions import FindPackageShare
 from launch.event_handlers import OnExecutionComplete
+from launch_ros.actions import PushRosNamespace
 from launch.substitutions import PathJoinSubstitution, LaunchConfiguration, Command
 
 def generate_launch_description():
-    # ld = LaunchDescription()
-    use_sim_time = DeclareLaunchArgument("use_sim_time", default_value="false")
+
+    namespace = LaunchConfiguration('namespace')
+
+    declare_namespace_cmd = DeclareLaunchArgument(
+        'namespace',
+        default_value='',
+        description='Top-level namespace')
+
+    declare_use_sim_time = DeclareLaunchArgument(
+        "use_sim_time",
+        default_value="false")
 
     upload_robot = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
@@ -20,6 +30,7 @@ def generate_launch_description():
             '/launch/upload_robot.launch.py']
         ),
         launch_arguments = {
+            'namespace': namespace,
             'use_gazebo_sim': 'false'
         }.items()
     )
@@ -186,18 +197,24 @@ def generate_launch_description():
         ]
     )
 
-    return LaunchDescription([
-        use_sim_time,
-        upload_robot,
+    bringup_cmd_group = GroupAction([
+        PushRosNamespace(namespace=namespace),
         control_node,
         load_joint_state_broadcaster,
         load_base_controller,
         load_former_io_controller,
-        # # robot_localization_node,
+        # robot_localization_node,
         lidar_bringup,
         imu_bringup,
         gpio_board_bringup,
         auto_docking_bringup,
         joy_node,
         teleop_joy_node
+    ])
+
+    return LaunchDescription([
+        declare_namespace_cmd,
+        declare_use_sim_time,
+        upload_robot,
+        bringup_cmd_group
     ])
