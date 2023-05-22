@@ -1,35 +1,35 @@
 import os
 import sys
-
+# from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, GroupAction
-from launch.actions import ExecuteProcess, IncludeLaunchDescription, RegisterEventHandler
+from launch.actions import DeclareLaunchArgument, GroupAction, ExecuteProcess, IncludeLaunchDescription, RegisterEventHandler
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch_ros.actions import Node
-from ament_index_python.packages import get_package_share_directory
-from launch_ros.substitutions import FindPackageShare
 from launch.event_handlers import OnExecutionComplete
 from launch.substitutions import PathJoinSubstitution, LaunchConfiguration, Command
-from launch_ros.actions import PushRosNamespace
+from launch_ros.substitutions import FindPackageShare
+from launch_ros.actions import Node, PushRosNamespace
+from nav2_common.launch import RewrittenYaml
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-from rewritten_yaml import RewrittenYaml
 
 def generate_launch_description():
     # ld = LaunchDescription()
     use_sim_time = DeclareLaunchArgument("use_sim_time", default_value="false")
+    
     namespace = LaunchConfiguration("namespace")
+
     declare_namespace_cmd = DeclareLaunchArgument(
         'namespace',
-        default_value='former2_3',
+        default_value='former2',
         description='Top-level namespace')
+    
     remappings = [('/tf', 'tf'),
                   ('/tf_static', 'tf_static'),
                   ('/diagnostics', 'diagnostics')]
 
     upload_robot = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
-            get_package_share_directory('former_description'),
+            FindPackageShare('former_description'),
             '/launch/ns_upload_robot.launch.py']
         ),
         launch_arguments = {
@@ -65,12 +65,7 @@ def generate_launch_description():
     #     ],
     # )
 
-    robot_controllers = PathJoinSubstitution([
-            FindPackageShare('former_bringup'),
-            "config",
-            "controllers_former.yaml"
-        ]
-    )
+    robot_controllers = PathJoinSubstitution([FindPackageShare('former_bringup'), "config", "controllers_former.yaml"])
 
     param_substitutions = {}
 
@@ -97,23 +92,24 @@ def generate_launch_description():
 
     load_joint_state_broadcaster = Node(
         package="controller_manager",
+        
         executable="spawner",
         remappings=remappings,
-        arguments=["joint_state_broadcaster", "--controller-manager", "controller_manager", "--namespace", "former2_3"],
+        arguments=["joint_state_broadcaster", "--controller-manager", "controller_manager"],
     )
 
     load_base_controller = Node(
         package="controller_manager",
         executable="spawner",
         remappings=remappings,
-        arguments=["base_controller", "--controller-manager", "controller_manager", "--namespace", "former2_3"],
+        arguments=["base_controller", "--controller-manager", "controller_manager"],
     )
 
     load_former_io_controller = Node(
         package="controller_manager",
         executable="spawner",
         remappings=remappings,
-        arguments=["former_io_controller", "--controller-manager", "controller_manager", "--namespace", "former2_3"],
+        arguments=["former_io_controller", "--controller-manager", "controller_manager"],
     )
 
     lidar_bringup = Node(
@@ -136,10 +132,8 @@ def generate_launch_description():
         output={
             "stdout": "screen",
             "stderr": "screen",
-        },
-        
-        remappings=remappings +
-            [('front_lidar/scan', 'scan')]
+        },   
+        remappings=remappings + [('front_lidar/scan', 'scan')]
     )
 
     auto_docking_bringup = Node(
@@ -202,10 +196,7 @@ def generate_launch_description():
         }],
     )
 
-    joy_param = PathJoinSubstitution([
-                FindPackageShare('former_bringup'),
-                'config/ps5.config.yaml'
-            ]),
+    joy_param = PathJoinSubstitution([FindPackageShare('former_bringup'), 'config/ps5.config.yaml']),
 
     configured_joy_param = RewrittenYaml(
         source_file=joy_param,
