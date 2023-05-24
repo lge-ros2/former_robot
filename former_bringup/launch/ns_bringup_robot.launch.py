@@ -10,8 +10,6 @@ from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node, PushRosNamespace
 from nav2_common.launch import RewrittenYaml
 
-sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-
 def generate_launch_description():
     # ld = LaunchDescription()
     use_sim_time = DeclareLaunchArgument("use_sim_time", default_value="false")
