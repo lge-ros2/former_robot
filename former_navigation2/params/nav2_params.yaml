@@ -39,7 +39,10 @@ amcl:
     z_short: 0.05
     scan_topic: scan
     set_initial_pose: true
-    initial_pose: [0, 0, 0]
+    initial_pose:
+      x: 0.0
+      y: 0.0
+      yaw: 0.0
 
 
 bt_navigator:
@@ -47,9 +50,10 @@ bt_navigator:
     use_sim_time: True
     global_frame: map
     robot_base_frame: base_link
-    odom_topic: /base_controller/odom
+    odom_topic: base_controller/odom
     bt_loop_duration: 10
     default_server_timeout: 20
+    default_nav_to_pose_bt_xml: nav2_bt_navigator/navigate_to_pose_w_replanning_and_recovery.xml
     # 'default_nav_through_poses_bt_xml' and 'default_nav_to_pose_bt_xml' are use defaults:
     # nav2_bt_navigator/navigate_to_pose_w_replanning_and_recovery.xml
     # nav2_bt_navigator/navigate_through_poses_w_replanning_and_recovery.xml
@@ -101,6 +105,14 @@ bt_navigator:
     - nav2_back_up_cancel_bt_node
     - nav2_assisted_teleop_cancel_bt_node
     - nav2_drive_on_heading_cancel_bt_node
+    # added for lpp
+    - nav2_request_trigger_lpp_bt_node
+    - nav2_print_blackboard_double_bt_node
+    - nav2_check_front_obstacle_bt_node
+    - nav2_set_lpp_goal_bt_node
+    - nav2_check_robot_orientation_bt_node
+    - nav2_send_lpp_end_bt_node
+    cout_bt_logger: False
 
 bt_navigator_navigate_through_poses_rclcpp_node:
   ros__parameters:
@@ -114,12 +126,13 @@ controller_server:
   ros__parameters:
     use_sim_time: True
     controller_frequency: 20.0
+    odom_topic: base_controller/odom
     min_x_velocity_threshold: 0.001
     min_y_velocity_threshold: 0.5
     min_theta_velocity_threshold: 0.001
     failure_tolerance: 0.3
     progress_checker_plugin: "progress_checker"
-    goal_checker_plugins: ["general_goal_checker"]
+    goal_checker_plugins: ["general_goal_checker", "only_position_checker"] # "precise_goal_checker"
     controller_plugins: ["FollowPath"]
 
     # Progress checker parameters
@@ -133,10 +146,17 @@ controller_server:
       plugin: "nav2_controller::SimpleGoalChecker"
       xy_goal_tolerance: 0.25
       yaw_goal_tolerance: 0.25
+    only_position_checker:
+      stateful: True
+      plugin: "nav2_controller::SimpleGoalChecker"
+      xy_goal_tolerance: 0.5
+      yaw_goal_tolerance: 6.28
     # DWB parameters
     FollowPath:
-      plugin: "nav2_rotation_shim_controller::RotationShimController"
-      primary_controller: "dwb_core::DWBLocalPlanner"
+      # plugin: "nav2_rotation_shim_controller::RotationShimController"
+      # primary_controller: "dwb_core::DWBLocalPlanner"
+      plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
+      desired_linear_vel: 0.6 #The desired maximum linear velocity to use.
 
       angular_dist_threshold: 0.485
       forward_sampling_distance: 0.5
@@ -196,14 +216,37 @@ local_costmap:
       rolling_window: True
       width: 5
       height: 5
-      resolution: 0.025
+      resolution: 0.05
       # robot_radius: 0.325
       footprint: '[[0.21, 0.21], [0.21, -0.21], [-0.21, -0.21], [-0.21, 0.21]]'
-      plugins: ["voxel_layer", "inflation_layer"]
+      plugins: ["global_voxel_layer", "inflation_layer"]
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
         inflation_radius: 0.45
+      global_voxel_layer:
+        plugin: "nav2_costmap_2d::GlobalVoxelLayer"
+        enabled: True
+        publish_voxel_map: True
+        origin_z: 0.0
+        z_resolution: 0.05
+        z_voxels: 16
+        max_obstacle_height: 2.0
+        mark_threshold: 0
+        observation_sources: scan
+        scan:
+          topic: /scan1
+          max_obstacle_height: 5.0
+          clearing: True
+          marking: True
+          data_type: "LaserScan"
+          raytrace_max_range: 15.0
+          raytrace_min_range: 0.0
+          obstacle_max_range: 5.0
+          obstacle_min_range: 0.0
+          scan_link_offset: 3.0
+          publish_cycle: 1.0
+          # init_scan_angle: False
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
         enabled: True
@@ -239,7 +282,7 @@ global_costmap:
       robot_base_frame: base_link
       robot_radius: 0.26
       # footprint: '[[0.25, 0.25], [0.25, -0.25], [-0.25, -0.25], [-0.25, 0.25]]'
-      resolution: 0.025
+      resolution: 0.05
       track_unknown_space: true
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
       obstacle_layer:
@@ -284,12 +327,15 @@ planner_server:
   ros__parameters:
     # expected_planner_frequency: 20.0
     use_sim_time: True
-    planner_plugins: ["GridBased"]
+    planner_plugins: ["GridBased", "TopicBased"]
     GridBased:
       plugin: "nav2_navfn_planner/NavfnPlanner"
       tolerance: 0.5
       use_astar: false
       allow_unknown: true
+    TopicBased:
+      plugin: "nav2_subscribe_planner/SubscribePlanner"
+      plan_topic: "fms_plan"
 
 smoother_server:
   ros__parameters:
@@ -354,7 +400,7 @@ velocity_smoother:
     min_velocity: [-0.6, 0.0, -2.0]
     max_accel: [2.0, 0.0, 3.2]
     max_decel: [-2.0, 0.0, -3.2]
-    odom_topic: "/base_controller/odom"
+    odom_topic: "base_controller/odom"
     odom_duration: 0.1
     deadband_velocity: [0.0, 0.0, 0.0]
     velocity_timeout: 1.0

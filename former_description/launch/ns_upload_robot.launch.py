@@ -15,7 +15,7 @@ def generate_launch_description():
     namespace = LaunchConfiguration("namespace")
     declare_namespace_cmd = DeclareLaunchArgument(
         'namespace',
-        default_value='former2_3',
+        default_value='former2',
         description='Top-level namespace')
     remappings = [('/tf', 'tf'),
                   ('/tf_static', 'tf_static'),
