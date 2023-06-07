@@ -13,6 +13,7 @@ def generate_launch_description():
     use_namespace = LaunchConfiguration("use_namespace")
     namespace = LaunchConfiguration("namespace")
     use_sim_time = LaunchConfiguration("use_sim_time")
+    joy_config = LaunchConfiguration("joy_config")
 
     declare_use_namespace_cmd = DeclareLaunchArgument(
         'use_namespace',
@@ -28,6 +29,11 @@ def generate_launch_description():
         'use_sim_time',
         default_value='false',
         description='Use simulation clock if true')
+
+    declare_joy_config_cmd = DeclareLaunchArgument(
+        'joy_config',
+        default_value="ps5.config.yaml",
+        description='choose joy controller profile')
 
     remappings = [('/tf', 'tf'),
                   ('/tf_static', 'tf_static'),
@@ -188,7 +194,7 @@ def generate_launch_description():
         }],
     )
 
-    joy_param = PathJoinSubstitution([FindPackageShare('former_bringup'), 'config/ps5.config.yaml']),
+    joy_param = PathJoinSubstitution([FindPackageShare('former_bringup'), 'config', joy_config]),
 
     configured_joy_param = RewrittenYaml(
         source_file=joy_param,
@@ -229,5 +235,6 @@ def generate_launch_description():
         declare_use_namespace_cmd,
         declare_namespace_cmd,
         declare_use_sim_time_cmd,
+        declare_joy_config_cmd,
         bringup_cmd_group
     ])
