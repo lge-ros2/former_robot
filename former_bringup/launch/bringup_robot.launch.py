@@ -179,7 +179,7 @@ def generate_launch_description():
         }],
     )
 
-    joy_param = PathJoinSubstitution([FindPackageShare('former_bringup'), 'config/ps5.config.yaml']),
+    joy_param = PathJoinSubstitution([FindPackageShare('former_bringup'), 'config', joy_config]),
 
     configured_joy_param = RewrittenYaml(
         source_file=joy_param,
