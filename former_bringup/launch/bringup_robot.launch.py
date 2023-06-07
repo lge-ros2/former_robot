@@ -1,5 +1,3 @@
-import os
-
 from launch import LaunchDescription
 from launch.conditions import IfCondition, UnlessCondition
 from launch.actions import DeclareLaunchArgument, GroupAction, LogInfo
@@ -123,13 +121,7 @@ def generate_launch_description():
             'range_min:=0.05',
             'sw_pll_only_publish:=false',
         ],
-        output={
-            "stdout": "screen",
-            "stderr": "screen",
-        },
-        remappings=[
-            ('front_lidar/scan', 'scan')
-        ]
+        remappings=remappings + [('front_lidar/scan', 'scan')]
     )
 
     auto_docking_bringup = Node(
@@ -141,14 +133,10 @@ def generate_launch_description():
         parameters=[
             {"distance_approach": 0.260},
         ],
-        remappings=[
-            ('odom', 'base_controller/odom'),
-            ('cmd_vel', 'base_controller/cmd_vel_unstamped')
-        ],
-        output={
-            "stdout": "screen",
-            "stderr": "screen",
-        }
+        remappings=remappings +
+            [('odom', 'base_controller/odom'),
+            ('cmd_vel', 'base_controller/cmd_vel_unstamped')]
+        ,
     )
 
     gpio_board_bringup = Node(
@@ -157,14 +145,11 @@ def generate_launch_description():
         name="former_gpio_board",
         namespace=LaunchConfiguration('namespace'),
         respawn=True,
+        remappings=remappings,
         parameters=[
             {"port_name": "/dev/ttyARDUINO"},
             {"baudrate": 115200},
         ],
-        output={
-            "stdout": "screen",
-            "stderr": "screen",
-        }
     )
 
     imu_bringup = Node(
@@ -173,16 +158,13 @@ def generate_launch_description():
         name='imu_node',
         namespace=LaunchConfiguration('namespace'),
         respawn=True,
+        remappings=remappings,
         parameters=[
             {'port_name': '/dev/ttyIMU'},
             {'baudrate': 921600},
             {'frame_id': [LaunchConfiguration('namespace'), '/imu_link']},
             {'rate': 100.0},
         ],
-        output={
-            "stdout": "screen",
-            "stderr": "screen",
-        }
     )
 
     joy_node = Node(
@@ -197,20 +179,24 @@ def generate_launch_description():
         }],
     )
 
+    joy_param = PathJoinSubstitution([FindPackageShare('former_bringup'), 'config/ps5.config.yaml']),
+
+    configured_joy_param = RewrittenYaml(
+        source_file=joy_param,
+        root_key=namespace,
+        param_rewrites=param_substitutions,
+        convert_types=True)
+
     teleop_joy_node = Node(
         package='teleop_twist_joy',
         executable='teleop_node',
         name='teleop_twist_joy_node',
         namespace=LaunchConfiguration('namespace'),
         parameters=[
-            PathJoinSubstitution([
-                FindPackageShare('former_bringup'),
-                'config/ps5.config.yaml'
-            ]),
+            configured_joy_param
         ],
-        remappings=[
-            ('cmd_vel', 'base_controller/cmd_vel_unstamped')
-        ]
+        remappings= remappings +
+            [('cmd_vel', 'base_controller/cmd_vel_unstamped')]
     )
 
     return LaunchDescription([
