@@ -11,11 +11,17 @@ class FormerSafetyControl : public rclcpp::Node
 {
 public:
   FormerSafetyControl()
-      : Node("former_safety_control"), safety_distance_(0.5f), safety_l_detected_(false), safety_r_detected_(false)
+      : Node("former_safety_control")
+      , safety_distance_(0.5f)
+      , max_distance_(5.0f)
+      , safety_l_detected_(false)
+      , safety_r_detected_(false)
   {
-    this->declare_parameter<double>("safety_distance", 0.3);
+    this->declare_parameter<double>("safety_distance", 0.5);
+    this->declare_parameter<double>("max_distance", 5.0);
 
     get_parameter("safety_distance", safety_distance_);
+    get_parameter("max_distance", max_distance_);
 
     sub_l_sonar_range_ = this->create_subscription<sensor_msgs::msg::Range>(
         "l_sonar_range", rclcpp::SensorDataQoS(), std::bind(&FormerSafetyControl::sonar_l_callback, this, std::placeholders::_1));
@@ -29,6 +35,7 @@ public:
     pub_cmd_vel_ = this->create_publisher<geometry_msgs::msg::Twist>("cmd_vel_out", 1);
 
     RCLCPP_INFO(this->get_logger(), "safety_distance(%f)", safety_distance_);
+    RCLCPP_INFO(this->get_logger(), "max_distance(%f)", max_distance_);
     RCLCPP_INFO(this->get_logger(), "Initialized...");
   }
 
@@ -49,10 +56,14 @@ private:
     else
       current_linear_direction = 0;
 
-    if ((safety_l_detected_ || safety_r_detected_) && current_linear_direction == last_linear_direction_)
+    if ((safety_l_detected_ || safety_r_detected_) &&
+        (last_linear_direction_ == 0 || current_linear_direction == last_linear_direction_))
     {
       cmd_vel.linear.x = 0.0;
       cmd_vel.angular.z = 0.0;
+
+      if (current_linear_direction != 0)
+        last_linear_direction_ = current_linear_direction;
     }
     else
     {
@@ -60,8 +71,6 @@ private:
       cmd_vel.angular.z = msg->angular.z;
     }
 
-    if (current_linear_direction != 0)
-      last_linear_direction_ = current_linear_direction;
 
     // RCLCPP_INFO(this->get_logger(), "last_linear_direction_(%d) current_linear_direction_(%d)", last_linear_direction_,  current_linear_direction);
 
@@ -70,37 +79,43 @@ private:
 
   void sonar_l_callback(const sensor_msgs::msg::Range::SharedPtr msg)
   {
-    if (msg->range >= msg->min_range && msg->range <= msg->max_range)
+    if (msg->range > 0)
     {
-      // RCLCPP_INFO(this->get_logger(), "left sonar range(%f)", msg->range);
-      const auto safety_detect = (msg->range < safety_distance_) ? true : false;
-      if (safety_detect && safety_r_detected_ == false)
-        pub_cmd_vel_->publish(geometry_msgs::msg::Twist());
+      if (msg->range >= msg->min_range && msg->range <= max_distance_)
+      {
+        // RCLCPP_INFO(this->get_logger(), "left sonar range(%f)", msg->range);
+        const auto safety_detect = (msg->range < safety_distance_) ? true : false;
+        if (safety_detect && safety_r_detected_ == false)
+          pub_cmd_vel_->publish(geometry_msgs::msg::Twist());
 
-      safety_l_detected_ = safety_detect;
-    }
-    else
-    {
-      RCLCPP_INFO(this->get_logger(), "wrong range in sonar L -> range(%f) min(%f) max(%f)", msg->range, msg->min_range, msg->max_range);
-      safety_l_detected_ = true;
+        safety_l_detected_ = safety_detect;
+      }
+      else
+      {
+        RCLCPP_INFO(this->get_logger(), "wrong range in sonar L -> range(%f) min(%f) max(%f)", msg->range, msg->min_range, max_distance_);
+        safety_l_detected_ = true;
+      }
     }
   }
 
   void sonar_r_callback(const sensor_msgs::msg::Range::SharedPtr msg)
   {
-    if (msg->range >= msg->min_range && msg->range <= msg->max_range)
+    if (msg->range > 0)
     {
-      // RCLCPP_INFO(this->get_logger(), "right sonar range(%f)", msg->range);
-      const auto safety_detect = (msg->range < safety_distance_) ? true : false;
-      if (safety_detect && safety_r_detected_ == false)
-        pub_cmd_vel_->publish(geometry_msgs::msg::Twist());
+      if (msg->range >= msg->min_range && msg->range <= max_distance_)
+      {
+        // RCLCPP_INFO(this->get_logger(), "right sonar range(%f)", msg->range);
+        const auto safety_detect = (msg->range < safety_distance_) ? true : false;
+        if (safety_detect && safety_r_detected_ == false)
+          pub_cmd_vel_->publish(geometry_msgs::msg::Twist());
 
-      safety_r_detected_ = safety_detect;
-    }
-    else
-    {
-      RCLCPP_INFO(this->get_logger(), "wrong range in sonar R -> range(%f) min(%f) max(%f)", msg->range, msg->min_range, msg->max_range);
-      safety_r_detected_ = true;
+        safety_r_detected_ = safety_detect;
+      }
+      else
+      {
+        RCLCPP_INFO(this->get_logger(), "wrong range in sonar R -> range(%f) min(%f) max(%f)", msg->range, msg->min_range, max_distance_);
+        safety_r_detected_ = true;
+      }
     }
   }
 
@@ -111,6 +126,7 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::Range>::SharedPtr sub_r_sonar_range_;
 
   float safety_distance_;
+  float max_distance_;
 
   int last_linear_direction_; // 1 forward, -1 backward
 
