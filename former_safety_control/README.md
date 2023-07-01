@@ -17,12 +17,25 @@
 
 ## how to run
 
+### base
+
 ```shell
 ros2 run former_safety_control main_node
+```
 
+### simulation
+
+```shell
 # with namespace
 ros2 run former_safety_control main_node --ros-args -r __ns:=/acloi00 -r l_sonar_range:=l_sonar/range -r r_sonar_range:=r_sonar/range -r cmd_vel_in:=cmd_vel -r cmd_vel_out:=base_controller/cmd_vel_unstamped
 
 # without namespace
 ros2 run former_safety_control main_node --ros-args -r l_sonar_range:=l_sonar/range -r r_sonar_range:=r_sonar/range -r cmd_vel_in:=cmd_vel -r cmd_vel_out:=base_controller/cmd_vel_unstamped
+```
+
+### former robot
+
+```shell
+# with namespace
+ros2 run former_safety_control main_node --ros-args -r __ns:=/former2_6 -r cmd_vel_in:=cmd_vel -r cmd_vel_out:=base_controller/cmd_vel_unstamped
 ```

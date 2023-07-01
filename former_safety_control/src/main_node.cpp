@@ -76,7 +76,6 @@ private:
       const auto safety_detect = (msg->range < safety_distance_) ? true : false;
       if (safety_detect && safety_r_detected_ == false)
         pub_cmd_vel_->publish(geometry_msgs::msg::Twist());
-        // send_stop_command_ = true;
 
       safety_l_detected_ = safety_detect;
     }
@@ -85,12 +84,6 @@ private:
       RCLCPP_INFO(this->get_logger(), "wrong range in sonar L -> range(%f) min(%f) max(%f)", msg->range, msg->min_range, msg->max_range);
       safety_l_detected_ = true;
     }
-
-    // if (send_stop_command_)
-    // {
-    //   pub_cmd_vel_->publish(geometry_msgs::msg::Twist());
-    //   send_stop_command_ = false;
-    // }
   }
 
   void sonar_r_callback(const sensor_msgs::msg::Range::SharedPtr msg)
@@ -101,7 +94,6 @@ private:
       const auto safety_detect = (msg->range < safety_distance_) ? true : false;
       if (safety_detect && safety_r_detected_ == false)
         pub_cmd_vel_->publish(geometry_msgs::msg::Twist());
-        // send_stop_command_ = true;
 
       safety_r_detected_ = safety_detect;
     }
@@ -110,12 +102,6 @@ private:
       RCLCPP_INFO(this->get_logger(), "wrong range in sonar R -> range(%f) min(%f) max(%f)", msg->range, msg->min_range, msg->max_range);
       safety_r_detected_ = true;
     }
-
-    // if (send_stop_command_)
-    // {
-    //   pub_cmd_vel_->publish(geometry_msgs::msg::Twist());
-    //   send_stop_command_ = false;
-    // }
   }
 
 private:
@@ -128,7 +114,6 @@ private:
 
   int last_linear_direction_; // 1 forward, -1 backward
 
-  bool send_stop_command_;
   bool safety_l_detected_;
   bool safety_r_detected_;
 };
