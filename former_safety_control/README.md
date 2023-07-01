@@ -4,7 +4,8 @@
 
 | Data Type | Parameter Name | Default Value  |
 |:---------:|:--------------:|:--------------:|
-| float | safety_distance | 0.3 |
+| float | safety_distance | 0.5 |
+| float | max_distance | 5.0 |
 
 ## predefined topic
 
@@ -21,6 +22,7 @@
 
 ```shell
 ros2 run former_safety_control main_node
+ros2 run former_safety_control main_node --ros-args -r safety_distance:=0.5 -r max_distance:=5.0
 ```
 
 ### simulation
